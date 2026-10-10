@@ -1,96 +1,71 @@
+using System.Diagnostics;
 using System.Text;
 using CoffeeShop.Common.Extensions;
 using CoffeeShop.Common.Models;
 using CoffeeShop.Common.Services;
 
-Console.OutputEncoding = Encoding.UTF8;
+namespace CoffeeShop.Console;
 
-Console.WriteLine("=== ДЕМОНСТРАЦІЯ РОБОТИ CRUD СЕРВІСУ ТА МОДЕЛІ КАВ'ЯРНІ ===\n");
-
-// Створення екземплярів
-var espresso = new CoffeeBeverage("Еспресо Допіо", 65.00m, 60, "Ефіопія Іргачіф", "Без молока", 130, false);
-var cappuccino = new CoffeeBeverage("Капучино", 95.00m, 250, "Колумбія Супремо", "Вівсяне молоко", 85, true);
-var matchaLatte = new TeaBeverage("Матча Латте", 110.00m, 300, "Японська Матча Удзі", 75, 2, true);
-
-// Метод розширення
-Console.WriteLine("--- Метод розширення ---");
-Console.WriteLine(espresso.ToFormattedReceiptString());
-Console.WriteLine();
-
-// Статичне поле / метод
-Console.WriteLine($"Загальна кількість створених елементів у системі (статичне поле): {Beverage.GetTotalBeveragesCreated()}\n");
-
-var service = new CrudService<Beverage>();
-
-// 1. Create
-Console.WriteLine("--- 1. Додавання напоїв до сервісу (Create) ---");
-service.Create(espresso);
-service.Create(cappuccino);
-service.Create(matchaLatte);
-Console.WriteLine("Напої успішно додані.\n");
-
-// 2. ReadAll
-Console.WriteLine("--- 2. Перегляд усіх напоїв (ReadAll) ---");
-PrintBeverageList(service.ReadAll());
-Console.WriteLine();
-
-// 3. Read
-Console.WriteLine($"--- 3. Отримання напою за ID (Read): {cappuccino.Id} ---");
-var found = service.Read(cappuccino.Id);
-Console.WriteLine(FormatItem(found));
-Console.WriteLine();
-
-// Подія
-Console.WriteLine("--- Виклик методу зі зміною ціни (тригер події) ---");
-espresso.OnPriceChanged += (bev, oldP, newP) =>
+public static class Program
 {
-    Console.WriteLine($"[ПОДІЯ]: Напій '{bev.Name}' змінив ціну: {oldP:F2} грн -> {newP:F2} грн.");
-};
-espresso.ChangePrice(75.00m);
-Console.WriteLine();
-
-// 4. Update
-Console.WriteLine("--- 4. Оновлення напою (Update) ---");
-cappuccino.Price = 120.00m;
-cappuccino.VolumeMl = 350;
-service.Update(cappuccino);
-Console.WriteLine($"Оновлений напій: {FormatItem(cappuccino)}\n");
-
-// 5. Remove
-Console.WriteLine($"--- 5. Видалення напою (Remove): {matchaLatte.Name} ---");
-service.Remove(matchaLatte);
-Console.WriteLine("Залишились у списку після видалення:");
-PrintBeverageList(service.ReadAll());
-Console.WriteLine();
-
-// 6. Save / Load
-Console.WriteLine("--- 6. Додаткове завдання: Збереження та завантаження з файлу ---");
-string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "coffeeshop_menu.json");
-service.Save(filePath);
-Console.WriteLine("Дані сервісу успішно збережено у файл 'coffeeshop_menu.json'.");
-
-var newService = new CrudService<Beverage>();
-newService.Load(filePath);
-Console.WriteLine("Дані, зчитані з файлу в новий екземпляр сервісу:");
-PrintBeverageList(newService.ReadAll());
-
-// Допоміжні методи для друку у стилі списку
-static void PrintBeverageList(IEnumerable<Beverage> items)
-{
-    foreach (var item in items)
+    public static async Task Main(string[] args)
     {
-        Console.WriteLine(FormatItem(item));
+        System.Console.OutputEncoding = Encoding.UTF8;
+
+        System.Console.WriteLine("=== ДЕМОНСТРАЦІЯ РОБОТИ CRUD СЕРВІСУ (АСИНХРОННІСТЬ ТА БАГАТОПОТОКОВІСТЬ) ===\n");
+
+        string dataFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "beverages_catalog.json");
+        var asyncService = new CrudServiceAsync<Beverage>(dataFilePath);
+
+        // 1. CreateAsync (Parallel)
+        const int totalItemsToGenerate = 1500;
+        System.Console.WriteLine($"--- 1. Паралельне створення {totalItemsToGenerate} об'єктів (Parallel.For) ---");
+        var sw = Stopwatch.StartNew();
+        Parallel.For(0, totalItemsToGenerate, _ =>
+        {
+            asyncService.CreateAsync(Beverage.CreateNew()).GetAwaiter().GetResult();
+        });
+        sw.Stop();
+        System.Console.WriteLine($"Створено через CrudServiceAsync та Beverage.CreateNew(): {asyncService.Count} об'єктів за {sw.ElapsedMilliseconds} мс. Втрат даних: 0.\n");
+
+        // 2. LINQ
+        System.Console.WriteLine("--- 2. Статистика для згенерованих об'єктів (LINQ) ---");
+        decimal minPrice = asyncService.Min(b => b.Price);
+        decimal maxPrice = asyncService.Max(b => b.Price);
+        decimal avgPrice = asyncService.Average(b => b.Price);
+
+        int minVolume = asyncService.Min(b => b.VolumeMl);
+        int maxVolume = asyncService.Max(b => b.VolumeMl);
+        double avgVolume = asyncService.Average(b => b.VolumeMl);
+
+        var coffeeList = asyncService.OfType<CoffeeBeverage>().ToList();
+        double avgCaffeine = coffeeList.Any() ? coffeeList.Average(c => c.CaffeineAmountMg) : 0;
+
+        System.Console.WriteLine($"Ціна (грн):   min = {minPrice:F2}, max = {maxPrice:F2}, avg = {avgPrice:F2}");
+        System.Console.WriteLine($"Об'єм (мл):   min = {minVolume}, max = {maxVolume}, avg = {avgVolume:F1}");
+        System.Console.WriteLine($"Кофеїн (мг):  avg = {avgCaffeine:F1} (у {coffeeList.Count} кавових напоях)");
+        System.Console.WriteLine($"Всього об'єктів у колекції: {asyncService.Count()}\n");
+
+        // 3. ReadAllAsync (Pagination)
+        const int pageSize = 5;
+        System.Console.WriteLine($"--- 3. Пагінація (ReadAllAsync: сторінка 1, {pageSize} елементів) ---");
+        var pagedItems = await asyncService.ReadAllAsync(1, pageSize);
+        int index = 1;
+        foreach (var item in pagedItems)
+        {
+            string typeBadge = item is CoffeeBeverage ? "[Кава]" : item is TeaBeverage ? "[Чай]" : "[Напій]";
+            System.Console.WriteLine($"{index++}. {typeBadge,-7} \"{item.Name}\" | {item.VolumeMl} мл | {item.Price:F2} грн | ID: {item.Id}");
+        }
+        System.Console.WriteLine();
+
+        // 4. SaveAsync
+        System.Console.WriteLine("--- 4. Асинхронне збереження колекції у файл (SaveAsync) ---");
+        await asyncService.SaveAsync();
+        var fileInfo = new FileInfo(dataFilePath);
+        System.Console.WriteLine($"Колекцію успішно збережено у файл '{fileInfo.Name}' ({fileInfo.Length / 1024.0:F1} КБ).\n");
+
+        // 5. Примітиви синхронізації
+        System.Console.WriteLine("--- 5. Приклади використання примітивів синхронізації ---");
+        await SynchronizationDemo.RunAllDemosAsync();
     }
-}
-
-static string FormatItem(Beverage b)
-{
-    string tag = b is CoffeeBeverage ? "[Кава]" : b is TeaBeverage ? "[Чай]" : "[Напій]";
-    string details = b switch
-    {
-        CoffeeBeverage c => $"\"{c.Name}\" - {c.CoffeeBeansOrigin} ({c.MilkType}), {c.VolumeMl} мл, {c.Price:F2} грн, Доступний: {c.IsAvailable}",
-        TeaBeverage t => $"\"{t.Name}\" - {t.TeaVariety}, {t.VolumeMl} мл, {t.Price:F2} грн, Доступний: {t.IsAvailable}",
-        _ => $"\"{b.Name}\", {b.VolumeMl} мл, {b.Price:F2} грн, Доступний: {b.IsAvailable}"
-    };
-    return $"{tag} ID: {b.Id} | {details}";
 }

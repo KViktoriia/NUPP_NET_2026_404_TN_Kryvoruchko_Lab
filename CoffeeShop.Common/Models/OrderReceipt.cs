@@ -36,4 +36,18 @@ public class OrderReceipt : IEntity
     {
         return $"Чек #{ReceiptNumber} для {CustomerName} на суму {TotalAmount} грн. Кількість позицій: {BeverageIds.Count}. Час: {CreatedAt:yyyy-MM-dd HH:mm:ss}";
     }
+
+    /// <summary>
+    /// Фабричний статичний метод для створення нового чека замовлення із згенерованими даними
+    /// </summary>
+    public static OrderReceipt CreateNew()
+    {
+        string[] customers = ["Олена", "Ігор", "Сергій", "Тетяна", "Олексій", "Наталія", "Андрій", "Дарина", "Василь", "Ірина"];
+        string customer = customers[Random.Shared.Next(customers.Length)];
+        decimal total = Math.Round((decimal)(60 + Random.Shared.NextDouble() * 550), 2);
+        int itemsCount = Random.Shared.Next(1, 6);
+        var bevIds = Enumerable.Range(0, itemsCount).Select(_ => Guid.NewGuid()).ToList();
+
+        return new OrderReceipt(customer, total, bevIds);
+    }
 }
