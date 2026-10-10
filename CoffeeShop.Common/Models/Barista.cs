@@ -41,4 +41,22 @@ public class Barista : IEntity
     {
         return workedHours * HourlyRate;
     }
+
+    /// <summary>
+    /// Фабричний статичний метод для створення нового баристи із згенерованими даними
+    /// </summary>
+    public static Barista CreateNew()
+    {
+        string[] firstNames = ["Олександр", "Максим", "Дмитро", "Богдан", "Андрій", "Марія", "Анна", "Юлія", "Олена", "Вікторія"];
+        string[] lastNames = ["Коваленко", "Шевченко", "Бондаренко", "Ткаченко", "Кравченко", "Мельник", "Мороз", "Поліщук"];
+        string[] shifts = ["Ранкова", "Денна", "Вечірня"];
+
+        string fullName = $"{firstNames[Random.Shared.Next(firstNames.Length)]} {lastNames[Random.Shared.Next(lastNames.Length)]}";
+        int experience = Random.Shared.Next(1, 11);
+        string shift = shifts[Random.Shared.Next(shifts.Length)];
+        decimal hourlyRate = Math.Round((decimal)(110 + Random.Shared.NextDouble() * 150), 2);
+        bool isCertified = Random.Shared.Next(2) == 1;
+
+        return new Barista(fullName, experience, shift, hourlyRate, isCertified);
+    }
 }
