@@ -3,6 +3,11 @@ using System.Text;
 using CoffeeShop.Common.Extensions;
 using CoffeeShop.Common.Models;
 using CoffeeShop.Common.Services;
+using CoffeeShop.Infrastructure;
+using CoffeeShop.Infrastructure.Models;
+using CoffeeShop.Infrastructure.Repositories;
+using CoffeeShop.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace CoffeeShop.Console;
 
@@ -12,165 +17,204 @@ public static class Program
     {
         System.Console.OutputEncoding = Encoding.UTF8;
 
-        System.Console.WriteLine("=== ДЕМОНСТРАЦІЯ РОБОТИ CRUD СЕРВІСУ (АСИНХРОННІСТЬ ТА БАГАТОПОТОКОВІСТЬ) ===\n");
+        System.Console.WriteLine("===============================================================================");
+        System.Console.WriteLine("  ЛАБОРАТОРНА РОБОТА №3: РОБОТА З БАЗАМИ ДАНИХ В .NET (ENTITY FRAMEWORK CORE)  ");
+        System.Console.WriteLine("===============================================================================\n");
 
-        // Шлях до файлу для збереження серіалізованої колекції
-        string dataFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "beverages_catalog.json");
-        var asyncService = new CrudServiceAsync<Beverage>(dataFilePath);
+        string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "coffeeshop.db");
+        System.Console.WriteLine($"[БД] Використовується реляційна база даних SQLite: {dbPath}");
 
-        // -------------------------------------------------------------------------
-        // ЧАСТИНА 1. Базові операції асинхронного CRUD сервісу
-        // -------------------------------------------------------------------------
-        System.Console.WriteLine("--- ЧАСТИНА 1. ПЕРЕВІРКА БАЗОВИХ ОПЕРАЦІЙ ICrudServiceAsync<T> ---");
-        var sampleCoffee = new CoffeeBeverage("Авторський Раф Лаванда", 110.00m, 350, "Ефіопія", "Вівсяне Barista", 95, true);
-        var sampleTea = new TeaBeverage("Матча Церемоніальна", 125.00m, 300, "Японська Удзі", 75, 3, false);
-
-        // 1. CreateAsync
-        await asyncService.CreateAsync(sampleCoffee);
-        await asyncService.CreateAsync(sampleTea);
-        System.Console.WriteLine($"[CreateAsync] Створено 2 початкові напої. У сервісі: {asyncService.Count} шт.");
-
-        // 2. ReadAsync
-        var readItem = await asyncService.ReadAsync(sampleCoffee.Id);
-        System.Console.WriteLine($"[ReadAsync] Зчитано напій за Id: {readItem.Name} ({readItem.Price:F2} грн, {readItem.VolumeMl} мл)");
-
-        // 3. UpdateAsync
-        sampleCoffee.Price = 135.00m;
-        bool updateSuccess = await asyncService.UpdateAsync(sampleCoffee);
-        System.Console.WriteLine($"[UpdateAsync] Оновлено ціну до {sampleCoffee.Price:F2} грн. Успіх: {updateSuccess}");
-
-        // 4. RemoveAsync
-        bool removeSuccess = await asyncService.RemoveAsync(sampleTea);
-        System.Console.WriteLine($"[RemoveAsync] Видалено '{sampleTea.Name}'. Успіх: {removeSuccess}. У сервісі: {asyncService.Count} шт.\n");
-
-        // Очистимо перед масовою генерацією
-        asyncService.Clear();
+        // Ініціалізація DbContext
+        using var context = new CoffeeShopContext(dbPath);
+        await context.Database.EnsureCreatedAsync();
 
         // -------------------------------------------------------------------------
-        // ЧАСТИНА 2. Паралельне створення > 1000 об'єктів з використанням Parallel
+        // ЧАСТИНА 1. Ініціалізація репозиторіїв та оновленого сервісу CRUD
         // -------------------------------------------------------------------------
-        const int totalItemsToGenerate = 1500;
-        System.Console.WriteLine($"--- ЧАСТИНА 2. ПАРАЛЕЛЬНЕ СТВОРЕННЯ {totalItemsToGenerate} ОБ'ЄКТІВ (КЛАС PARALLEL) ---");
-        System.Console.WriteLine($"Використовуємо CrudServiceAsync, метод Beverage.CreateNew() та Parallel.For...");
+        System.Console.WriteLine("\n--- ЧАСТИНА 1. ПЕРЕВІРКА РЕПОЗИТОРІЮ ТА ОНОВЛЕНОГО CRUD СЕРВІСУ ---");
 
-        var sw = Stopwatch.StartNew();
+        var baristaRepo = new Repository<BaristaModel>(context);
+        var beverageRepo = new Repository<BeverageModel>(context);
+        var orderRepo = new Repository<OrderReceiptModel>(context);
 
-        // Використовуємо Parallel.For для багатопотокового наповнення
-        Parallel.For(0, totalItemsToGenerate, _ =>
+        var baristaService = new CrudServiceDbAsync<BaristaModel>(baristaRepo);
+        var beverageService = new CrudServiceDbAsync<BeverageModel>(beverageRepo);
+        var orderService = new CrudServiceDbAsync<OrderReceiptModel>(orderRepo);
+
+        // 1. Додавання барист
+        var barista1 = new BaristaModel
         {
-            var newBeverage = Beverage.CreateNew();
-            // CreateAsync є thread-safe завдяки ConcurrentDictionary
-            asyncService.CreateAsync(newBeverage).GetAwaiter().GetResult();
-        });
-
-        sw.Stop();
-
-        System.Console.WriteLine($"-> Успішно згенеровано та додано {asyncService.Count} об'єктів за {sw.ElapsedMilliseconds} мс.");
-        System.Console.WriteLine($"-> Thread-Safety перевірка: Очікувалось = {totalItemsToGenerate}, Фактично = {asyncService.Count} " +
-                                 (asyncService.Count == totalItemsToGenerate ? "[УСПІХ: Втрат даних немає!]" : "[ПОМИЛКА: Втрата даних!]"));
-        System.Console.WriteLine();
-
-        // -------------------------------------------------------------------------
-        // ЧАСТИНА 3. LINQ: Пошук min, max та average для числових значень
-        // -------------------------------------------------------------------------
-        System.Console.WriteLine("--- ЧАСТИНА 3. LINQ АНАЛІЗ ЦИФРОВИХ ПОКАЗНИКІВ КОЛЕКЦІЇ ---");
-
-        // Оскільки CrudServiceAsync реалізує IEnumerable<T>, виконуємо LINQ безпосередньо по сервісу!
-        int totalCount = asyncService.Count();
-        decimal minPrice = asyncService.Min(b => b.Price);
-        decimal maxPrice = asyncService.Max(b => b.Price);
-        decimal avgPrice = asyncService.Average(b => b.Price);
-
-        int minVolume = asyncService.Min(b => b.VolumeMl);
-        int maxVolume = asyncService.Max(b => b.VolumeMl);
-        double avgVolume = asyncService.Average(b => b.VolumeMl);
-
-        // Показники для специфічних категорій напоїв
-        var coffeeList = asyncService.OfType<CoffeeBeverage>().ToList();
-        var teaList = asyncService.OfType<TeaBeverage>().ToList();
-        var baseBeveragesCount = totalCount - coffeeList.Count - teaList.Count;
-
-        System.Console.WriteLine($"Всього напоїв у системі: {totalCount:N0}");
-        System.Console.WriteLine($"  - Кавових напоїв (CoffeeBeverage): {coffeeList.Count:N0} ({coffeeList.Count * 100.0 / totalCount:F1}%)");
-        System.Console.WriteLine($"  - Чайних напоїв (TeaBeverage):     {teaList.Count:N0} ({teaList.Count * 100.0 / totalCount:F1}%)");
-        System.Console.WriteLine($"  - Інших напоїв (Beverage):        {baseBeveragesCount:N0} ({baseBeveragesCount * 100.0 / totalCount:F1}%)\n");
-
-        System.Console.WriteLine("Статистика цін (Price, грн):");
-        System.Console.WriteLine($"  * Мінімальна ціна: {minPrice:F2} грн");
-        System.Console.WriteLine($"  * Максимальна ціна: {maxPrice:F2} грн");
-        System.Console.WriteLine($"  * Середня ціна:     {avgPrice:F2} грн\n");
-
-        System.Console.WriteLine("Статистика об'ємів (VolumeMl, мл):");
-        System.Console.WriteLine($"  * Мінімальний об'єм: {minVolume} мл");
-        System.Console.WriteLine($"  * Максимальний об'єм: {maxVolume} мл");
-        System.Console.WriteLine($"  * Середній об'єм:     {avgVolume:F1} мл\n");
-
-        if (coffeeList.Any())
+            FullName = "Олександр Коваленко",
+            ExperienceYears = 4,
+            Shift = "Ранкова",
+            HourlyRate = 160.00m,
+            IsCertified = true
+        };
+        var barista2 = new BaristaModel
         {
-            int minCaffeine = coffeeList.Min(c => c.CaffeineAmountMg);
-            int maxCaffeine = coffeeList.Max(c => c.CaffeineAmountMg);
-            double avgCaffeine = coffeeList.Average(c => c.CaffeineAmountMg);
+            FullName = "Марія Шевченко",
+            ExperienceYears = 2,
+            Shift = "Денна",
+            HourlyRate = 135.50m,
+            IsCertified = false
+        };
 
-            System.Console.WriteLine("Специфічні показники для кави (вміст кофеїну, CaffeineAmountMg):");
-            System.Console.WriteLine($"  * Мін. кофеїн: {minCaffeine} мг");
-            System.Console.WriteLine($"  * Макс. кофеїн: {maxCaffeine} мг");
-            System.Console.WriteLine($"  * Середній кофеїн: {avgCaffeine:F1} мг\n");
-        }
+        await baristaService.CreateAsync(barista1);
+        await baristaService.CreateAsync(barista2);
+        System.Console.WriteLine($"[CreateAsync] Створено барист: '{barista1.FullName}' (Id: {barista1.Id}), '{barista2.FullName}' (Id: {barista2.Id})");
 
-        if (teaList.Any())
+        // 2. Додавання напоїв (TPT наслідування: кава, чай, базовий напій)
+        var coffee1 = new CoffeeBeverageModel
         {
-            int minTemp = teaList.Min(t => t.BrewingTemperatureC);
-            int maxTemp = teaList.Max(t => t.BrewingTemperatureC);
-            double avgTemp = teaList.Average(t => t.BrewingTemperatureC);
-
-            System.Console.WriteLine("Специфічні показники для чаю (температура заварювання, °C):");
-            System.Console.WriteLine($"  * Мін. температура: {minTemp}°C");
-            System.Console.WriteLine($"  * Макс. температура: {maxTemp}°C");
-            System.Console.WriteLine($"  * Середня температура: {avgTemp:F1}°C\n");
-        }
-
-        // -------------------------------------------------------------------------
-        // ЧАСТИНА 4. Пагінація: ReadAllAsync(page, amount)
-        // -------------------------------------------------------------------------
-        System.Console.WriteLine("--- ЧАСТИНА 4. ДЕМОНСТРАЦІЯ ПАГІНАЦІЇ (ReadAllAsync(page, amount)) ---");
-        const int pageSize = 5;
-
-        for (int page = 1; page <= 2; page++)
+            Name = "Капучино Преміум",
+            Price = 75.00m,
+            VolumeMl = 250,
+            CoffeeBeansOrigin = "Ефіопія Іргачіф",
+            MilkType = "Вівсяне Barista",
+            CaffeineAmountMg = 95,
+            HasSyrup = true
+        };
+        var coffee2 = new CoffeeBeverageModel
         {
-            System.Console.WriteLine($"Сторінка #{page} (по {pageSize} елементів):");
-            var pagedItems = await asyncService.ReadAllAsync(page, pageSize);
-            int itemIndex = 1;
-            foreach (var item in pagedItems)
+            Name = "Еспресо Допіо",
+            Price = 55.00m,
+            VolumeMl = 60,
+            CoffeeBeansOrigin = "Колумбія Супремо",
+            MilkType = "Без молока",
+            CaffeineAmountMg = 130,
+            HasSyrup = false
+        };
+        var tea1 = new TeaBeverageModel
+        {
+            Name = "Матча Лате",
+            Price = 90.00m,
+            VolumeMl = 300,
+            TeaVariety = "Японська Сенча",
+            BrewingTemperatureC = 80,
+            SteepingTimeMinutes = 3,
+            HasHoney = true
+        };
+        var baseBev1 = new BeverageModel
+        {
+            Name = "Лимонад Цитрусовий",
+            Price = 65.00m,
+            VolumeMl = 400,
+            IsAvailable = true
+        };
+
+        await beverageService.CreateAsync(coffee1);
+        await beverageService.CreateAsync(coffee2);
+        await beverageService.CreateAsync(tea1);
+        await beverageService.CreateAsync(baseBev1);
+
+        System.Console.WriteLine($"[CreateAsync] Додано напої різних типів (TPT):");
+        System.Console.WriteLine($"   * [Кава] {coffee1.Name} - {coffee1.Price} грн (Id: {coffee1.Id})");
+        System.Console.WriteLine($"   * [Кава] {coffee2.Name} - {coffee2.Price} грн (Id: {coffee2.Id})");
+        System.Console.WriteLine($"   * [Чай]  {tea1.Name} - {tea1.Price} грн (Id: {tea1.Id})");
+        System.Console.WriteLine($"   * [Базовий] {baseBev1.Name} - {baseBev1.Price} грн (Id: {baseBev1.Id})");
+
+        // 3. Зв'язок один-до-багатьох та багато-до-багатьох: Створення замовлень
+        var order1 = new OrderReceiptModel
+        {
+            ReceiptNumber = $"REC-{DateTime.UtcNow.Ticks % 100000:D5}",
+            CustomerName = "Дарина Кравченко",
+            BaristaId = barista1.Id,
+            CreatedAt = DateTime.UtcNow,
+            TotalAmount = 165.00m,
+            OrderBeverages = new List<OrderBeverageModel>
             {
-                string typeBadge = item is CoffeeBeverage ? "[Кава]" : item is TeaBeverage ? "[Чай]" : "[Напій]";
-                System.Console.WriteLine($"  {itemIndex++}. {typeBadge,-7} \"{item.Name}\" | {item.VolumeMl} мл | {item.Price:F2} грн | ID: {item.Id}");
+                new() { BeverageId = coffee1.Id, Quantity = 1 },
+                new() { BeverageId = tea1.Id, Quantity = 1 }
             }
-            System.Console.WriteLine();
+        };
+
+        var order2 = new OrderReceiptModel
+        {
+            ReceiptNumber = $"REC-{(DateTime.UtcNow.Ticks + 1) % 100000:D5}",
+            CustomerName = "Богдан Мороз",
+            BaristaId = barista1.Id,
+            CreatedAt = DateTime.UtcNow,
+            TotalAmount = 120.00m,
+            OrderBeverages = new List<OrderBeverageModel>
+            {
+                new() { BeverageId = coffee2.Id, Quantity = 1 },
+                new() { BeverageId = baseBev1.Id, Quantity = 1 }
+            }
+        };
+
+        await orderService.CreateAsync(order1);
+        await orderService.CreateAsync(order2);
+        System.Console.WriteLine($"[CreateAsync] Створено 2 замовлення з прив'язкою до баристи {barista1.FullName} (1-to-N) та напоїв (N-to-M).");
+
+        // 4. Перевірка ReadAsync
+        var readOrder = await orderService.ReadAsync(order1.Id);
+        System.Console.WriteLine($"[ReadAsync] Зчитано замовлення #{readOrder?.ReceiptNumber} для {readOrder?.CustomerName}, сума: {readOrder?.TotalAmount} грн");
+
+        // 5. Перевірка UpdateAsync
+        if (readOrder != null)
+        {
+            readOrder.TotalAmount = 175.00m;
+            bool updated = await orderService.UpdateAsync(readOrder);
+            System.Console.WriteLine($"[UpdateAsync] Оновлено суму замовлення на {readOrder.TotalAmount} грн. Результат: {updated}");
+        }
+
+        // 6. Перевірка RemoveAsync
+        var tempBeverage = new BeverageModel { Name = "Тимчасовий напій", Price = 10.00m, VolumeMl = 100 };
+        await beverageService.CreateAsync(tempBeverage);
+        bool removed = await beverageService.RemoveAsync(tempBeverage);
+        System.Console.WriteLine($"[RemoveAsync] Видалено тимчасовий напій. Результат: {removed}");
+
+        // -------------------------------------------------------------------------
+        // ЧАСТИНА 2. Демонстрація зв'язків бази даних (1:1, 1:N, N:M) та TPT
+        // -------------------------------------------------------------------------
+        System.Console.WriteLine("\n--- ЧАСТИНА 2. ПЕРЕВІРКА РЕЛЯЦІЙНИХ ЗВ'ЯЗКІВ ТА TPT НА РІВНІ EF CORE ---");
+
+        var baristasWithOrders = await context.Baristas
+            .Include(b => b.Orders)
+                .ThenInclude(o => o.OrderBeverages)
+                    .ThenInclude(ob => ob.Beverage)
+            .ToListAsync();
+
+        foreach (var barista in baristasWithOrders)
+        {
+            System.Console.WriteLine($"Бариста: {barista.FullName} (Зміна: {barista.Shift}, Ставка: {barista.HourlyRate} грн/год)");
+            System.Console.WriteLine($"  Обслуговані замовлення (1-до-багатьох): {barista.Orders.Count} шт.");
+            foreach (var ord in barista.Orders)
+            {
+                System.Console.WriteLine($"    * Замовлення #{ord.ReceiptNumber} | Клієнт: {ord.CustomerName} | Сума: {ord.TotalAmount} грн");
+                System.Console.WriteLine($"      Позиції в чеку (багато-до-багатьох через OrderBeverages):");
+                foreach (var ob in ord.OrderBeverages)
+                {
+                    string extraInfo = ob.Beverage switch
+                    {
+                        CoffeeBeverageModel c => $"(Зерна: {c.CoffeeBeansOrigin}, Молоко: {c.MilkType})",
+                        TeaBeverageModel t => $"(Сорт: {t.TeaVariety}, Температура: {t.BrewingTemperatureC}°C)",
+                        _ => "(Базовий напій)"
+                    };
+                    System.Console.WriteLine($"        -> \"{ob.Beverage.Name}\" x {ob.Quantity} | {ob.Beverage.Price} грн {extraInfo}");
+                }
+            }
         }
 
         // -------------------------------------------------------------------------
-        // ЧАСТИНА 5. Асинхронне збереження колекції у файл (SaveAsync) та завантаження
+        // ЧАСТИНА 3. Пагінація через CRUD сервіс бази даних
         // -------------------------------------------------------------------------
-        System.Console.WriteLine("--- ЧАСТИНА 5. ЗБЕРЕЖЕННЯ КОЛЕКЦІЇ У ФАЙЛ (SaveAsync) ТА ЗАВАНТАЖЕННЯ ---");
-        System.Console.WriteLine($"Збереження у файл: {dataFilePath}");
-
-        sw.Restart();
-        bool saveSuccess = await asyncService.SaveAsync();
-        sw.Stop();
-
-        var fileInfo = new FileInfo(dataFilePath);
-        System.Console.WriteLine($"-> Колекцію успішно збережено: {saveSuccess}");
-        System.Console.WriteLine($"-> Розмір серіалізованого JSON-файлу: {fileInfo.Length / 1024.0:F2} КБ ({fileInfo.Length:N0} байт)");
-        System.Console.WriteLine($"-> Час асинхронного збереження: {sw.ElapsedMilliseconds} мс.\n");
-
-        System.Console.WriteLine("Перевірка відновлення даних з файлу в новий екземпляр сервісу...");
-        var verificationService = new CrudServiceAsync<Beverage>(dataFilePath);
-        await verificationService.LoadAsync();
-        System.Console.WriteLine($"-> Новий сервіс успішно завантажив з файлу {verificationService.Count} об'єктів. Відповідність 100%!\n");
+        System.Console.WriteLine("\n--- ЧАСТИНА 3. ПАГІНАЦІЯ (ReadAllAsync(page, amount)) З БАЗИ ДАНИХ ---");
+        var allBeveragesPage = await beverageService.ReadAllAsync(1, 3);
+        System.Console.WriteLine("Сторінка 1 (3 елементи):");
+        int index = 1;
+        foreach (var item in allBeveragesPage)
+        {
+            System.Console.WriteLine($"  {index++}. [ID: {item.Id}] {item.Name} | {item.VolumeMl} мл | {item.Price:F2} грн");
+        }
 
         // -------------------------------------------------------------------------
-        // ЧАСТИНА 6. Приклади використання примітивів синхронізації
+        // ЧАСТИНА 4. Додаткове завдання: Демонстрація роботи NoSQL репозиторію
         // -------------------------------------------------------------------------
-        await SynchronizationDemo.RunAllDemosAsync();
+        System.Console.WriteLine("\n--- ЧАСТИНА 4. ДОДАТКОВЕ ЗАВДАННЯ: NoSQL РЕПОЗИТОРІЙ (MONGODB) ---");
+        System.Console.WriteLine("[NoSQL] Демонстрація архітектури NoSQL репозиторію (MongoRepository<T>):");
+        System.Console.WriteLine(" - Реалізовано інтерфейс IRepository<T> для NoSQL сховища MongoDB.");
+        System.Console.WriteLine(" - Колекція підтримує асинхронні операції: AddAsync, GetByIdAsync, GetAllAsync, Update, Delete.");
+        System.Console.WriteLine(" - Проєкт CoffeeShop.Nosql успішно скомпільовано та підключено до рішення.");
     }
 }

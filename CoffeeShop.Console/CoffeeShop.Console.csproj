@@ -2,6 +2,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CoffeeShop.Common\CoffeeShop.Common.csproj" />
+    <ProjectReference Include="..\CoffeeShop.Infrastructure\CoffeeShop.Infrastructure.csproj" />
+    <ProjectReference Include="..\CoffeeShop.Nosql\CoffeeShop.Nosql.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
 
   <PropertyGroup>
