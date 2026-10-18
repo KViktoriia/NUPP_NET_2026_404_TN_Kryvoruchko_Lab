@@ -35,7 +35,7 @@ public class Beverage : IEntity
     public Beverage()
     {
         Id = Guid.NewGuid();
-        _totalBeveragesCreated++;
+        Interlocked.Increment(ref _totalBeveragesCreated);
     }
 
     // конструктор (параметризований)
@@ -46,7 +46,7 @@ public class Beverage : IEntity
         Price = price;
         VolumeMl = volumeMl;
         IsAvailable = true;
-        _totalBeveragesCreated++;
+        Interlocked.Increment(ref _totalBeveragesCreated);
     }
 
     // метод
@@ -68,5 +68,34 @@ public class Beverage : IEntity
     public static int GetTotalBeveragesCreated()
     {
         return _totalBeveragesCreated;
+    }
+
+    /// <summary>
+    /// Фабричний статичний метод для створення нового напою з випадковими даними
+    /// </summary>
+    public static Beverage CreateNew()
+    {
+        int choice = Random.Shared.Next(3);
+        return choice switch
+        {
+            0 => CoffeeBeverage.CreateNew(),
+            1 => TeaBeverage.CreateNew(),
+            _ => CreateNewBaseBeverage()
+        };
+    }
+
+    /// <summary>
+    /// Фабричний статичний метод для створення базового безалкогольного напою
+    /// </summary>
+    public static Beverage CreateNewBaseBeverage()
+    {
+        string[] names = ["Лимонад цитрусовий", "Смузі ягідний", "Какао з маршмелоу", "Гарячий шоколад", "Фреш апельсиновий", "Мохіто б/а"];
+        int[] volumes = [200, 250, 300, 350, 400, 500];
+
+        string name = names[Random.Shared.Next(names.Length)];
+        decimal price = Math.Round((decimal)(45 + Random.Shared.NextDouble() * 80), 2);
+        int volume = volumes[Random.Shared.Next(volumes.Length)];
+
+        return new Beverage(name, price, volume);
     }
 }
