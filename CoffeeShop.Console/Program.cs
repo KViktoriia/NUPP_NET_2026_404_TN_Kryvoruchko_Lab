@@ -17,12 +17,9 @@ public static class Program
     {
         System.Console.OutputEncoding = Encoding.UTF8;
 
-        System.Console.WriteLine("===============================================================================");
-        System.Console.WriteLine("  ЛАБОРАТОРНА РОБОТА №3: РОБОТА З БАЗАМИ ДАНИХ В .NET (ENTITY FRAMEWORK CORE)  ");
-        System.Console.WriteLine("===============================================================================\n");
+        System.Console.WriteLine("=== ДЕМОНСТРАЦІЯ РОБОТИ З БАЗОЮ ДАНИХ (ENTITY FRAMEWORK CORE, SQLITE) ===\n");
 
         string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "coffeeshop.db");
-        System.Console.WriteLine($"[БД] Використовується реляційна база даних SQLite: {dbPath}");
 
         // Ініціалізація DbContext
         using var context = new CoffeeShopContext(dbPath);
@@ -31,7 +28,7 @@ public static class Program
         // -------------------------------------------------------------------------
         // ЧАСТИНА 1. Ініціалізація репозиторіїв та оновленого сервісу CRUD
         // -------------------------------------------------------------------------
-        System.Console.WriteLine("\n--- ЧАСТИНА 1. ПЕРЕВІРКА РЕПОЗИТОРІЮ ТА ОНОВЛЕНОГО CRUD СЕРВІСУ ---");
+        System.Console.WriteLine("--- 1. Перевірка репозиторію та оновленого CRUD сервісу ---");
 
         var baristaRepo = new Repository<BaristaModel>(context);
         var beverageRepo = new Repository<BeverageModel>(context);
@@ -107,11 +104,7 @@ public static class Program
         await beverageService.CreateAsync(tea1);
         await beverageService.CreateAsync(baseBev1);
 
-        System.Console.WriteLine($"[CreateAsync] Додано напої різних типів (TPT):");
-        System.Console.WriteLine($"   * [Кава] {coffee1.Name} - {coffee1.Price} грн (Id: {coffee1.Id})");
-        System.Console.WriteLine($"   * [Кава] {coffee2.Name} - {coffee2.Price} грн (Id: {coffee2.Id})");
-        System.Console.WriteLine($"   * [Чай]  {tea1.Name} - {tea1.Price} грн (Id: {tea1.Id})");
-        System.Console.WriteLine($"   * [Базовий] {baseBev1.Name} - {baseBev1.Price} грн (Id: {baseBev1.Id})");
+        System.Console.WriteLine($"[CreateAsync] Додано напої різних типів (TPT): Капучино, Еспресо, Матча, Лимонад");
 
         // 3. Зв'язок один-до-багатьох та багато-до-багатьох: Створення замовлень
         var order1 = new OrderReceiptModel
@@ -144,7 +137,7 @@ public static class Program
 
         await orderService.CreateAsync(order1);
         await orderService.CreateAsync(order2);
-        System.Console.WriteLine($"[CreateAsync] Створено 2 замовлення з прив'язкою до баристи {barista1.FullName} (1-to-N) та напоїв (N-to-M).");
+        System.Console.WriteLine($"[CreateAsync] Створено 2 замовлення (1-до-багатьох з баристою, багато-до-багатьох з напоями)");
 
         // 4. Перевірка ReadAsync
         var readOrder = await orderService.ReadAsync(order1.Id);
@@ -167,7 +160,7 @@ public static class Program
         // -------------------------------------------------------------------------
         // ЧАСТИНА 2. Демонстрація зв'язків бази даних (1:1, 1:N, N:M) та TPT
         // -------------------------------------------------------------------------
-        System.Console.WriteLine("\n--- ЧАСТИНА 2. ПЕРЕВІРКА РЕЛЯЦІЙНИХ ЗВ'ЯЗКІВ ТА TPT НА РІВНІ EF CORE ---");
+        System.Console.WriteLine("\n--- 2. Перевірка реляційних зв'язків та TPT в EF Core ---");
 
         var baristasWithOrders = await context.Baristas
             .Include(b => b.Orders)
@@ -177,21 +170,13 @@ public static class Program
 
         foreach (var barista in baristasWithOrders)
         {
-            System.Console.WriteLine($"Бариста: {barista.FullName} (Зміна: {barista.Shift}, Ставка: {barista.HourlyRate} грн/год)");
-            System.Console.WriteLine($"  Обслуговані замовлення (1-до-багатьох): {barista.Orders.Count} шт.");
+            System.Console.WriteLine($"Бариста: {barista.FullName} (Зміна: {barista.Shift}, Ставка: {barista.HourlyRate:F2} грн/год) | Замовлень: {barista.Orders.Count}");
             foreach (var ord in barista.Orders)
             {
-                System.Console.WriteLine($"    * Замовлення #{ord.ReceiptNumber} | Клієнт: {ord.CustomerName} | Сума: {ord.TotalAmount} грн");
-                System.Console.WriteLine($"      Позиції в чеку (багато-до-багатьох через OrderBeverages):");
+                System.Console.WriteLine($"  * Чек #{ord.ReceiptNumber} | Клієнт: {ord.CustomerName} | Сума: {ord.TotalAmount:F2} грн");
                 foreach (var ob in ord.OrderBeverages)
                 {
-                    string extraInfo = ob.Beverage switch
-                    {
-                        CoffeeBeverageModel c => $"(Зерна: {c.CoffeeBeansOrigin}, Молоко: {c.MilkType})",
-                        TeaBeverageModel t => $"(Сорт: {t.TeaVariety}, Температура: {t.BrewingTemperatureC}°C)",
-                        _ => "(Базовий напій)"
-                    };
-                    System.Console.WriteLine($"        -> \"{ob.Beverage.Name}\" x {ob.Quantity} | {ob.Beverage.Price} грн {extraInfo}");
+                    System.Console.WriteLine($"    -> \"{ob.Beverage.Name}\" x {ob.Quantity} | {ob.Beverage.Price:F2} грн");
                 }
             }
         }
@@ -199,9 +184,8 @@ public static class Program
         // -------------------------------------------------------------------------
         // ЧАСТИНА 3. Пагінація через CRUD сервіс бази даних
         // -------------------------------------------------------------------------
-        System.Console.WriteLine("\n--- ЧАСТИНА 3. ПАГІНАЦІЯ (ReadAllAsync(page, amount)) З БАЗИ ДАНИХ ---");
+        System.Console.WriteLine("\n--- 3. Пагінація з бази даних (ReadAllAsync(page, amount)) ---");
         var allBeveragesPage = await beverageService.ReadAllAsync(1, 3);
-        System.Console.WriteLine("Сторінка 1 (3 елементи):");
         int index = 1;
         foreach (var item in allBeveragesPage)
         {
@@ -211,10 +195,9 @@ public static class Program
         // -------------------------------------------------------------------------
         // ЧАСТИНА 4. Додаткове завдання: Демонстрація роботи NoSQL репозиторію
         // -------------------------------------------------------------------------
-        System.Console.WriteLine("\n--- ЧАСТИНА 4. ДОДАТКОВЕ ЗАВДАННЯ: NoSQL РЕПОЗИТОРІЙ (MONGODB) ---");
-        System.Console.WriteLine("[NoSQL] Демонстрація архітектури NoSQL репозиторію (MongoRepository<T>):");
-        System.Console.WriteLine(" - Реалізовано інтерфейс IRepository<T> для NoSQL сховища MongoDB.");
-        System.Console.WriteLine(" - Колекція підтримує асинхронні операції: AddAsync, GetByIdAsync, GetAllAsync, Update, Delete.");
-        System.Console.WriteLine(" - Проєкт CoffeeShop.Nosql успішно скомпільовано та підключено до рішення.");
+        System.Console.WriteLine("\n--- 4. Додаткове завдання: NoSQL репозиторій (MongoDB) ---");
+        System.Console.WriteLine("[MongoRepository<T>] Реалізовано IRepository<T> для NoSQL бази MongoDB.");
+        System.Console.WriteLine("[MongoRepository<T>] Операції AddAsync, GetByIdAsync, GetAllAsync, Update, Delete.");
+        System.Console.WriteLine("[NoSQL] Проєкт CoffeeShop.Nosql успішно підключено до рішення.");
     }
 }
