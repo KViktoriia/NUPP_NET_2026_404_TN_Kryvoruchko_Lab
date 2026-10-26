@@ -427,3 +427,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# SQLite Database file for Lab 3 submission
+!coffeeshop.db

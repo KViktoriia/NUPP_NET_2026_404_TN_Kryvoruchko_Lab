@@ -1,0 +1,65 @@
+// === DATABASE: coffeeshop_nosql | COLLECTION: baristas ===
+{
+  "_id" : 1,
+  "FullName" : "Олександр Коваленко",
+  "ExperienceYears" : 4,
+  "Shift" : "Ранкова",
+  "HourlyRate" : {
+    "$numberDecimal" : "160.00"
+  },
+  "IsCertified" : true,
+  "Orders" : []
+}
+{
+  "_id" : 2,
+  "FullName" : "Марія Шевченко",
+  "ExperienceYears" : 2,
+  "Shift" : "Денна",
+  "HourlyRate" : {
+    "$numberDecimal" : "135.50"
+  },
+  "IsCertified" : false,
+  "Orders" : []
+}
+
+// === DATABASE: coffeeshop_nosql | COLLECTION: beverages ===
+{
+  "_id" : 1,
+  "_t" : "CoffeeBeverageModel",
+  "Name" : "Капучино Преміум",
+  "Price" : {
+    "$numberDecimal" : "75.00"
+  },
+  "VolumeMl" : 250,
+  "IsAvailable" : true,
+  "OrderBeverages" : [],
+  "CoffeeBeansOrigin" : "Ефіопія Іргачіф",
+  "MilkType" : "Вівсяне Barista",
+  "CaffeineAmountMg" : 95,
+  "HasSyrup" : true
+}
+{
+  "_id" : 2,
+  "_t" : "TeaBeverageModel",
+  "Name" : "Матча Лате",
+  "Price" : {
+    "$numberDecimal" : "90.00"
+  },
+  "VolumeMl" : 300,
+  "IsAvailable" : true,
+  "OrderBeverages" : [],
+  "TeaVariety" : "Японська Сенча",
+  "BrewingTemperatureC" : 80,
+  "SteepingTimeMinutes" : 3,
+  "HasHoney" : true
+}
+{
+  "_id" : 3,
+  "Name" : "Лимонад Цитрусовий",
+  "Price" : {
+    "$numberDecimal" : "65.00"
+  },
+  "VolumeMl" : 400,
+  "IsAvailable" : true,
+  "OrderBeverages" : []
+}
