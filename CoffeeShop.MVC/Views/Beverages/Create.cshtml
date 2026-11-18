@@ -1,0 +1,40 @@
+﻿@model CoffeeShop.Infrastructure.Models.BeverageModel
+
+@{
+    ViewData["Title"] = "Додати напій";
+}
+
+<div class="container mt-4">
+    <h2>Додати новий напій</h2>
+    <hr />
+    <div class="row">
+        <div class="col-md-6">
+            <form asp-action="Create">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <div class="mb-3">
+                    <label asp-for="Name" class="form-label">Назва напою</label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Price" class="form-label">Ціна (грн)</label>
+                    <input asp-for="Price" type="number" step="0.5" class="form-control" />
+                    <span asp-validation-for="Price" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="VolumeMl" class="form-label">Об'єм (мл)</label>
+                    <input asp-for="VolumeMl" type="number" class="form-control" />
+                    <span asp-validation-for="VolumeMl" class="text-danger"></span>
+                </div>
+                <div class="mb-3 form-check">
+                    <input class="form-check-input" asp-for="IsAvailable" />
+                    <label class="form-check-label" asp-for="IsAvailable">В наявності</label>
+                </div>
+                <div class="mb-3">
+                    <input type="submit" value="Зберегти" class="btn btn-success" />
+                    <a asp-action="Index" class="btn btn-secondary">Назад до списку</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

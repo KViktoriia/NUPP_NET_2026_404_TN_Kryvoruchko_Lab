@@ -1,12 +1,12 @@
-using CoffeeShop.Infrastructure.Models;
+﻿using CoffeeShop.Infrastructure.Models;
 
 namespace CoffeeShop.Infrastructure.Services;
 
 /// <summary>
-/// Інтерфейс асинхронного дженерік CRUD сервісу з доступом до БД
+/// Інтерфейс асинхронного дженерік CRUD сервісу
 /// </summary>
-/// <typeparam name="T">Тип сутності моделі БД, що реалізує IEntityModel</typeparam>
-public interface ICrudServiceDbAsync<T> : IEnumerable<T> where T : class, IEntityModel
+/// <typeparam name="T">Тип сутності</typeparam>
+public interface ICrudServiceAsync<T>
 {
     Task<bool> CreateAsync(T element);
     Task<T?> ReadAsync(int id);
@@ -15,4 +15,12 @@ public interface ICrudServiceDbAsync<T> : IEnumerable<T> where T : class, IEntit
     Task<bool> UpdateAsync(T element);
     Task<bool> RemoveAsync(T element);
     Task<bool> SaveAsync();
+}
+
+/// <summary>
+/// Інтерфейс асинхронного дженерік CRUD сервісу з прив'язкою до БД
+/// </summary>
+/// <typeparam name="T">Тип сутності моделі БД, що спадкує IEntityModel</typeparam>
+public interface ICrudServiceDbAsync<T> : ICrudServiceAsync<T>, IEnumerable<T> where T : class, IEntityModel
+{
 }
