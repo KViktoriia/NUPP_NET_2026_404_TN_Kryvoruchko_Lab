@@ -1,0 +1,30 @@
+﻿@model CoffeeShop.Infrastructure.Models.BeverageModel
+
+@{
+    ViewData["Title"] = "Деталі напою";
+}
+
+<div class="container mt-4">
+    <h2>Детальна інформація про напій</h2>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-3">ID</dt>
+        <dd class="col-sm-9">@Model.Id</dd>
+
+        <dt class="col-sm-3">Назва</dt>
+        <dd class="col-sm-9">@Model.Name</dd>
+
+        <dt class="col-sm-3">Ціна</dt>
+        <dd class="col-sm-9">@Model.Price.ToString("F2") грн</dd>
+
+        <dt class="col-sm-3">Об'єм</dt>
+        <dd class="col-sm-9">@Model.VolumeMl мл</dd>
+
+        <dt class="col-sm-3">В наявності</dt>
+        <dd class="col-sm-9">@(Model.IsAvailable ? "Так" : "Ні")</dd>
+    </dl>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Редагувати</a>
+        <a asp-action="Index" class="btn btn-secondary">Назад до списку</a>
+    </div>
+</div>

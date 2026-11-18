@@ -1,0 +1,39 @@
+﻿@{
+    ViewData["Title"] = "Головна";
+}
+
+<div class="container text-center py-5">
+    <h1 class="display-5 fw-bold mb-3">☕ Панель керування CoffeeShop</h1>
+    <p class="lead text-muted mb-4">
+        Вебзастосунок розроблено в рамках лабораторної роботи №4 (ASP.NET Core MVC).
+    </p>
+
+    <div class="row justify-content-center g-4 mt-3">
+        <div class="col-md-5">
+            <div class="card h-100 shadow-sm border-0 bg-light">
+                <div class="card-body p-4 text-start">
+                    <h3 class="card-title text-dark">👨‍🍳 Бариста</h3>
+                    <p class="card-text text-muted">
+                        Перегляд списку персоналу, редагування робочих змін, погодинних ставок та додавання нових працівників.
+                    </p>
+                    <a asp-controller="Baristas" asp-action="Index" class="btn btn-primary mt-2">
+                        Перейти до списку бариста &rarr;
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-5">
+            <div class="card h-100 shadow-sm border-0 bg-light">
+                <div class="card-body p-4 text-start">
+                    <h3 class="card-title text-dark">🍵 Меню напоїв</h3>
+                    <p class="card-text text-muted">
+                        Керування каталогом напоїв: кава, чай, налаштування цін, об'ємів та перевірка наявності.
+                    </p>
+                    <a asp-controller="Beverages" asp-action="Index" class="btn btn-success mt-2">
+                        Перейти до меню напоїв &rarr;
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,30 @@
+﻿@model CoffeeShop.Infrastructure.Models.BeverageModel
+
+@{
+    ViewData["Title"] = "Видалити напій";
+}
+
+<div class="container mt-4">
+    <h2 class="text-danger">Видалення напою</h2>
+    <h5 class="mb-3">Ви впевнені, що бажаєте видалити цей напій?</h5>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-3">ID</dt>
+        <dd class="col-sm-9">@Model.Id</dd>
+
+        <dt class="col-sm-3">Назва</dt>
+        <dd class="col-sm-9">@Model.Name</dd>
+
+        <dt class="col-sm-3">Ціна</dt>
+        <dd class="col-sm-9">@Model.Price.ToString("F2") грн</dd>
+
+        <dt class="col-sm-3">Об'єм</dt>
+        <dd class="col-sm-9">@Model.VolumeMl мл</dd>
+    </dl>
+    
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <input type="submit" value="Підтвердити видалення" class="btn btn-danger" />
+        <a asp-action="Index" class="btn btn-secondary">Скасувати</a>
+    </form>
+</div>

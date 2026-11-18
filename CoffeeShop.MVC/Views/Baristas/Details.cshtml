@@ -1,0 +1,33 @@
+﻿@model CoffeeShop.Infrastructure.Models.BaristaModel
+
+@{
+    ViewData["Title"] = "Деталі бариста";
+}
+
+<div class="container mt-4">
+    <h2>Детальна інформація про бариста</h2>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-3">ID</dt>
+        <dd class="col-sm-9">@Model.Id</dd>
+
+        <dt class="col-sm-3">Повне ім'я</dt>
+        <dd class="col-sm-9">@Model.FullName</dd>
+
+        <dt class="col-sm-3">Досвід роботи</dt>
+        <dd class="col-sm-9">@Model.ExperienceYears років</dd>
+
+        <dt class="col-sm-3">Зміна</dt>
+        <dd class="col-sm-9">@Model.Shift</dd>
+
+        <dt class="col-sm-3">Погодинна ставка</dt>
+        <dd class="col-sm-9">@Model.HourlyRate.ToString("F2") грн</dd>
+
+        <dt class="col-sm-3">Сертифікований</dt>
+        <dd class="col-sm-9">@(Model.IsCertified ? "Так" : "Ні")</dd>
+    </dl>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Редагувати</a>
+        <a asp-action="Index" class="btn btn-secondary">Назад до списку</a>
+    </div>
+</div>
